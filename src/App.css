@@ -1,0 +1,257 @@
+/* src/App.css */
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+:root {
+  --primary-gradient: linear-gradient(135deg, #f09433 0%, #e1306c 50%, #833ab4 100%);
+  --bg-color: #121212;
+  --card-bg: #1e1e1e;
+  --text-primary: #ffffff;
+  --text-secondary: #aaaaaa;
+  --border-color: #333;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: "Funnel Sans", sans-serif;
+    margin: 0;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Container Principal - Centraliza o bloco na tela */
+.main-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Área de Conteúdo */
+.container {
+    width: 90%;
+    max-width: 800px;
+    padding-top: 80px;
+    padding-bottom: 80px;
+    /* ALTERADO DE LEFT PARA CENTER */
+    text-align: center; 
+}
+
+/* --- Componentes de UI --- */
+
+/* Card Profissional */
+.card {
+    background-color: var(--card-bg);
+    padding: 24px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    /* Garante que o texto DENTRO do card continue alinhado à esquerda */
+    text-align: left; 
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    border-color: #555;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: var(--primary-gradient);
+}
+
+/* Avatar do Pet */
+.pet-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #f09433;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.pet-avatar-placeholder {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 2px solid #444;
+}
+
+/* Formulários */
+input, select {
+    width: 100%;
+    padding: 16px;
+    margin: 12px 0;
+    background-color: #252525;
+    border: 1px solid #444;
+    color: white;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-sizing: border-box;
+}
+
+input:focus, select:focus {
+    border-color: #e1306c;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(225, 48, 108, 0.2);
+}
+
+/* Botão Principal com Gradiente */
+.btn-primary {
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 1.1rem;
+    width: 100%;
+    margin-top: 20px;
+    transition: transform 0.2s, filter 0.2s;
+    box-shadow: 0 4px 15px rgba(225, 48, 108, 0.4);
+}
+
+.btn-primary:hover {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid #666;
+    color: #ccc;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-secondary:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border-color: white;
+}
+
+/* Botão Flutuante (+) */
+.btn-float {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    font-size: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 30px rgba(240, 148, 51, 0.5);
+    z-index: 100;
+    cursor: pointer;
+    border: none; /* Remove borda padrão se houver */
+    color: white;
+    background: var(--primary-gradient);
+}
+
+/* Menu Lateral */
+.menu-container {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+.menu-icon {
+    width: 48px;
+    height: 48px;
+    background: #333;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border: 1px solid #444;
+    transition: background 0.2s;
+}
+
+.menu-icon:hover {
+    background: #444;
+}
+
+.menu-items {
+    background: #1e1e1e;
+    padding: 15px;
+    border-radius: 12px;
+    margin-top: 15px;
+    border: 1px solid #444;
+    width: 240px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left; /* Menu sempre alinhado à esquerda */
+}
+
+.menu-item {
+    padding: 14px;
+    color: #e0e0e0;
+    text-decoration: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.2s, color 0.2s;
+    font-weight: 500;
+}
+
+.menu-item:hover {
+    background: #333;
+    color: #f09433;
+}
+
+/* Ajustes para Títulos */
+h1, h2, h3 {
+    margin-top: 0;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    background: var(--primary-gradient);
+    /* ADICIONADO: Propriedade padrão para remover o warning */
+    background-clip: text; 
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
