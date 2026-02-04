@@ -61,8 +61,6 @@ const PetForm: React.FC = () => {
       setValue('raca', pet.raca);
       setValue('idade', pet.idade);
       if (pet.foto) setPreview(pet.foto.url);
-      // O endpoint /v1/pets/{id} retorna os tutores vinculados no objeto 'tutores'
-      // conforme documentação do Swagger[cite: 760].
       if (pet.tutores) setLinkedTutors(pet.tutores);
     } catch (error) {
       navigate('/pets');
@@ -97,24 +95,31 @@ const PetForm: React.FC = () => {
   const handleLinkTutor = async () => {
     if (!selectedTutor) return alert('Selecione um tutor.');
     try {
-      [cite_start]// API: POST /v1/tutores/{id}/pets/{petId} [cite: 621]
       await TutorService.vincularPet(selectedTutor.id, Number(id));
       alert('Tutor vinculado!');
       handleClearSelection();
       loadPetData();
-    } catch (error) {
-      alert('Erro ao vincular.');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Erro desconhecido";
+      alert(`Erro ao vincular: ${msg}`);
     }
   };
 
   const handleUnlinkTutor = async (tutorId: number) => {
-    if (!confirm('Remover tutor?')) return;
+    if (!confirm('Remover este tutor?')) return;
     try {
-      [cite_start]// API: DELETE /v1/tutores/{id}/pets/{petId} [cite: 649]
+      // Log para debug
+      console.log(`Desvinculando Tutor ${tutorId} do Pet ${id}`);
+      
       await TutorService.desvincularPet(tutorId, Number(id));
+      
+      alert('Vínculo removido!');
       loadPetData();
-    } catch (error) {
-      alert('Erro ao desvincular.');
+    } catch (error: any) {
+      console.error("Erro detalhado:", error);
+      const status = error.response?.status;
+      const msg = error.response?.data?.message || error.message;
+      alert(`Erro ao desvincular (Status ${status}): ${msg}`);
     }
   };
 
@@ -238,7 +243,13 @@ const PetForm: React.FC = () => {
             {linkedTutors.map(tutor => (
                 <div key={tutor.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#121212', padding: '10px', marginBottom: '10px', borderRadius: '8px' }}>
                     <span>{tutor.nome}</span>
-                    <button onClick={() => handleUnlinkTutor(tutor.id)} style={{ color: '#e57373', background: 'none', border: 'none', cursor: 'pointer' }}>Remover</button>
+                    <button 
+                        type="button" 
+                        onClick={() => handleUnlinkTutor(tutor.id)} 
+                        style={{ color: '#e57373', background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                        Remover
+                    </button>
                 </div>
             ))}
         </div>
