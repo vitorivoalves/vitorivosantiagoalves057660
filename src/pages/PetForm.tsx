@@ -6,24 +6,20 @@ import { TutorService } from '../services/tutorService';
 import Loading from '../components/Loading';
 import type { Tutor } from '../types';
 
-interface PetFormData {
-  nome: string;
-  raca: string;
-  idade: number;
-  especie?: string;
-}
+interface PetFormData { nome: string; raca: string; idade: number; especie?: string; }
 
 const PetForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
-
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<PetFormData>();
+  const { register, handleSubmit, formState: { errors }, setValue } = useForm<PetFormData>();
+  
   const [loading, setLoading] = useState(false);
   const [foto, setFoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-
   const [linkedTutors, setLinkedTutors] = useState<Tutor[]>([]);
+  
+  // Autocomplete States
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<Tutor[]>([]);
   const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null);
@@ -31,62 +27,58 @@ const PetForm: React.FC = () => {
   const searchWrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isEditing) loadPetData();
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
+    if (isEditing) loadData();
+    // Fecha dropdown ao clicar fora
+    const clickOut = (e: MouseEvent) => {
+        if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) setShowDropdown(false);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", clickOut);
+    return () => document.removeEventListener("mousedown", clickOut);
   }, [id]);
 
   useEffect(() => {
-    if (isEditing && searchTerm && !selectedTutor) {
-      const timer = setTimeout(() => searchTutors(searchTerm), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [searchTerm, isEditing]);
+    const timer = setTimeout(() => { if(isEditing && searchTerm && !selectedTutor) searchTutors(searchTerm) }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  const loadPetData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       const pet = await PetService.getById(id!);
-      setValue('nome', pet.nome);
-      setValue('raca', pet.raca);
-      setValue('idade', pet.idade);
+      setValue('nome', pet.nome); setValue('raca', pet.raca); setValue('idade', pet.idade);
       if (pet.foto) setPreview(pet.foto.url);
       if (pet.tutores) setLinkedTutors(pet.tutores);
-    } catch (error) { navigate('/pets'); } finally { setLoading(false); }
+    } catch (e) { navigate('/pets'); } finally { setLoading(false); }
   };
 
-  const searchTutors = async (nome: string) => {
+  const searchTutors = async (term: string) => {
     try {
-      const data = await TutorService.getAll(0, nome);
-      setSearchResults(data.content);
-      setShowDropdown(true);
-    } catch (error) { console.error("Erro busca tutores"); }
+        const res = await TutorService.getAll(0, term);
+        setSearchResults(res.content); setShowDropdown(true);
+    } catch(e) {}
   };
 
-  const handleSelectTutor = (tutor: Tutor) => {
-    setSelectedTutor(tutor); setSearchTerm(tutor.nome); setShowDropdown(false);
+  const handleLink = async () => {
+    if(!selectedTutor) return;
+    try { await TutorService.vincularPet(selectedTutor.id, Number(id)); loadData(); setSelectedTutor(null); setSearchTerm(''); }
+    catch(e) { alert('Erro ao vincular.'); }
   };
 
-  const handleLinkTutor = async () => {
-    if (!selectedTutor) return alert('Selecione um tutor.');
+  const handleUnlink = async (tId: number) => {
+    if(!confirm('Desvincular tutor?')) return;
+    try { await TutorService.desvincularPet(tId, Number(id)); loadData(); } catch(e) { alert('Erro.'); }
+  };
+
+  // NOVO: Função de Deletar Pet
+  const handleDelete = async () => {
+    if (!confirm('ATENÇÃO: Deseja realmente excluir este pet do sistema? Essa ação não pode ser desfeita.')) return;
     try {
-      await TutorService.vincularPet(selectedTutor.id, Number(id));
-      alert('Tutor vinculado!');
-      setSelectedTutor(null); setSearchTerm(''); setSearchResults([]); loadPetData();
-    } catch (error: any) { alert(`Erro: ${error.response?.data?.message || 'Falha ao vincular'}`); }
-  };
-
-  const handleUnlinkTutor = async (tutorId: number) => {
-    if (!confirm('Remover este tutor?')) return;
-    try {
-      await TutorService.desvincularPet(tutorId, Number(id));
-      loadPetData();
-    } catch (error) { alert('Erro ao desvincular.'); }
+      await PetService.delete(id!);
+      alert('Pet excluído com sucesso.');
+      navigate('/pets');
+    } catch (error) {
+      alert('Erro ao excluir. Verifique se existem pendências.');
+    }
   };
 
   const onSubmit = async (data: PetFormData) => {
@@ -94,123 +86,78 @@ const PetForm: React.FC = () => {
     try {
       let petId = id;
       if (isEditing) await PetService.save(data, id);
-      else {
-        const res = await PetService.save(data);
-        // @ts-ignore
-        petId = res.data.id;
-      }
+      else { const res = await PetService.save(data); petId = (res as any).data.id; }
       if (foto && petId) await PetService.uploadPhoto(petId, foto);
-      alert('Salvo com sucesso!');
-      if (!isEditing) navigate('/pets');
-    } catch (error) { alert('Erro ao salvar.'); } finally { setLoading(false); }
+      alert('Salvo!'); if(!isEditing) navigate('/pets');
+    } catch (e) { alert('Erro ao salvar.'); } finally { setLoading(false); }
   };
 
   if (loading && !isEditing) return <Loading />;
 
   return (
-    <div className="container" style={{ maxWidth: '800px', paddingTop: '40px', paddingBottom: '100px' }}>
-      {/* Botão Voltar Corrigido */}
-      <button onClick={() => navigate('/pets')} className="btn-secondary" style={{ marginBottom: '20px' }}>
+    <div className="container">
+      <button onClick={() => navigate('/pets')} className="btn-secondary" style={{marginBottom: 20}}>
         <span className="material-icons">arrow_back</span> Voltar
       </button>
 
-      <h2 style={{color: '#e0e0e0'}}>{isEditing ? 'Editar Pet' : 'Novo Pet'}</h2>
+      <h2 style={{color:'#e0e0e0'}}>{isEditing ? 'Editar Pet' : 'Novo Pet'}</h2>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card" style={{ borderTop: '4px solid #90caf9' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px', color: '#90caf9' }}>
-          Dados do Pet
-        </h3>
-
-        <div style={{ display: 'grid', gap: '15px' }}>
-            <div>
-                <label>Nome do Pet</label>
-                <input {...register("nome", { required: true })} placeholder="Ex: Rex" />
-                {errors.nome && <span style={{ color: '#ef9a9a' }}>Obrigatório</span>}
-            </div>
-            <div>
-                <label>Espécie</label>
-                <select {...register("especie")}>
-                    <option value="Cachorro">Cachorro</option>
-                    <option value="Gato">Gato</option>
-                    <option value="Outro">Outro</option>
-                </select>
-            </div>
-            <div>
-                <label>Raça</label>
-                <input {...register("raca")} placeholder="Ex: Vira-lata" />
-            </div>
-            <div>
-                <label>Idade (anos)</label>
-                <input type="number" {...register("idade", { required: true })} placeholder="0" />
-            </div>
-            <div>
-                <label>Foto de Perfil</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '8px' }}>
-                    {preview && <img src={preview} alt="Preview" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #90caf9' }} />}
-                    <input type="file" onChange={(e) => { if (e.target.files?.[0]) { setFoto(e.target.files[0]); setPreview(URL.createObjectURL(e.target.files[0])); } }} accept="image/*" />
-                </div>
-            </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="card" style={{borderTop: '4px solid #90caf9'}}>
+        <div style={{display:'grid', gap: 15}}>
+          <div><label>Nome</label><input {...register('nome')} /></div>
+          <div><label>Espécie</label><select {...register('especie')}><option>Cachorro</option><option>Gato</option><option>Outro</option></select></div>
+          <div><label>Raça</label><input {...register('raca')} /></div>
+          <div><label>Idade</label><input type="number" {...register('idade')} /></div>
+          <div>
+             <label>Foto</label>
+             <div style={{display:'flex', gap:10, alignItems:'center', marginTop:5}}>
+               {preview && <img src={preview} style={{width:50, height:50, borderRadius:'50%', objectFit:'cover'}} />}
+               <input type="file" onChange={e => { if(e.target.files?.[0]) { setFoto(e.target.files[0]); setPreview(URL.createObjectURL(e.target.files[0])) }}} />
+             </div>
+          </div>
         </div>
-
-        {/* Botão Salvar Corrigido */}
-        <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '24px', width: '100%' }}>
-          <span className="material-icons">save</span>
-          {loading ? 'Salvando...' : 'Salvar Registro'}
-        </button>
+        
+        <div style={{display: 'flex', gap: '10px', marginTop: 25}}>
+            <button type="submit" className="btn-primary" style={{flex: 1}}>
+                <span className="material-icons">save</span> Salvar
+            </button>
+            
+            {/* NOVO: Botão Excluir */}
+            {isEditing && (
+                <button type="button" onClick={handleDelete} className="btn-secondary" style={{borderColor: '#ef9a9a', color: '#ef9a9a'}}>
+                    <span className="material-icons">delete</span> Excluir
+                </button>
+            )}
+        </div>
       </form>
 
       {isEditing && (
-        <div className="card" style={{ marginTop: '30px', borderTop: '4px solid #80deea' }}>
-            <h3 style={{ marginTop: 0, color: '#80deea' }}>Tutores Responsáveis</h3>
-            
-            <div style={{ background: '#2d2d2d', padding: '20px', borderRadius: '8px', marginBottom: '20px', position: 'relative' }} ref={searchWrapperRef}>
-                <label style={{color: '#80deea'}}>Vincular Tutor</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1 }}>
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por nome..."
-                            value={searchTerm}
-                            onChange={(e) => { setSearchTerm(e.target.value); setSelectedTutor(null); setShowDropdown(true); }}
-                            onFocus={() => { if(searchTerm && !selectedTutor) setShowDropdown(true); }}
-                            style={{ margin: 0 }}
-                        />
-                        {showDropdown && searchResults.length > 0 && (
-                            <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#2d2d2d', border: '1px solid #444', maxHeight: '200px', overflowY: 'auto', padding: 0, margin: 0, listStyle: 'none', zIndex: 10, boxShadow: '0 4px 8px rgba(0,0,0,0.5)' }}>
-                                {searchResults.map(tutor => (
-                                    <li key={tutor.id} onClick={() => handleSelectTutor(tutor)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #444', color: '#e0e0e0' }}>
-                                        <strong>{tutor.nome}</strong> <span style={{fontSize: '0.85rem', color: '#9e9e9e'}}>({tutor.cpf})</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                    {/* Botão Adicionar Corrigido */}
-                    <button type="button" className="btn-primary" onClick={handleLinkTutor} disabled={!selectedTutor} style={{ width: 'auto', padding: '0 20px', backgroundColor: '#80deea' }}>
-                       <span className="material-icons" style={{color: '#121212'}}>add</span>
-                    </button>
-                </div>
-            </div>
-
-            {linkedTutors.map(tutor => (
-                <div key={tutor.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#2d2d2d', padding: '16px', marginBottom: '10px', borderRadius: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span className="material-icons" style={{ color: '#80deea' }}>person</span>
-                        <div>
-                           <div style={{ color: '#fff', fontWeight: 500 }}>{tutor.nome}</div>
-                           <div style={{ color: '#aaa', fontSize: '0.85rem' }}>{tutor.telefone}</div>
-                        </div>
-                    </div>
-                    {/* Botão Remover Corrigido */}
-                    <button type="button" onClick={() => handleUnlinkTutor(tutor.id)} style={{ color: '#ef9a9a', background: 'transparent', fontSize: '0.9rem', border: '1px solid #ef9a9a', padding: '6px 12px', borderRadius: '16px' }}>
-                       <span className="material-icons" style={{fontSize: '18px'}}>delete</span> Remover
-                    </button>
-                </div>
-            ))}
+        <div className="card" style={{marginTop: 30, borderTop: '4px solid #80deea'}}>
+           <h3 style={{color:'#80deea', marginTop:0}}>Tutores</h3>
+           <div style={{background:'#2d2d2d', padding:15, borderRadius:8, marginBottom:15}} ref={searchWrapperRef}>
+              <div style={{display:'flex', gap:10}}>
+                 <div style={{flex:1, position:'relative'}}>
+                    <input placeholder="Buscar tutor..." value={searchTerm} onChange={e => {setSearchTerm(e.target.value); setSelectedTutor(null);}} onFocus={() => setShowDropdown(true)} />
+                    {showDropdown && searchResults.length > 0 && (
+                        <ul style={{position:'absolute', top:'100%', left:0, right:0, background:'#333', zIndex:10, listStyle:'none', padding:0, margin:0, border:'1px solid #444'}}>
+                           {searchResults.map(t => (
+                               <li key={t.id} onClick={() => {setSelectedTutor(t); setSearchTerm(t.nome); setShowDropdown(false)}} style={{padding:10, cursor:'pointer', borderBottom:'1px solid #444'}}>{t.nome}</li>
+                           ))}
+                        </ul>
+                    )}
+                 </div>
+                 <button type="button" className="btn-primary" onClick={handleLink} disabled={!selectedTutor}><span className="material-icons">add</span></button>
+              </div>
+           </div>
+           {linkedTutors.map(t => (
+               <div key={t.id} style={{display:'flex', justifyContent:'space-between', padding:10, borderBottom:'1px solid #333'}}>
+                   <span style={{display:'flex', alignItems:'center', gap:5}}><span className="material-icons" style={{color:'#80deea'}}>person</span> {t.nome}</span>
+                   <button type="button" onClick={() => handleUnlink(t.id)} style={{background:'none', color:'#ef9a9a'}}>Remover</button>
+               </div>
+           ))}
         </div>
       )}
     </div>
   );
 };
-
 export default PetForm;
