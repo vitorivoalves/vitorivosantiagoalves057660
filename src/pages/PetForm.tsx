@@ -23,7 +23,6 @@ const PetForm: React.FC = () => {
   const [foto, setFoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  // Estados de Tutores
   const [linkedTutors, setLinkedTutors] = useState<Tutor[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<Tutor[]>([]);
@@ -32,9 +31,7 @@ const PetForm: React.FC = () => {
   const searchWrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isEditing) {
-      loadPetData();
-    }
+    if (isEditing) loadPetData();
     const handleClickOutside = (event: MouseEvent) => {
       if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
@@ -46,9 +43,7 @@ const PetForm: React.FC = () => {
 
   useEffect(() => {
     if (isEditing && searchTerm && !selectedTutor) {
-      const timer = setTimeout(() => {
-        searchTutors(searchTerm);
-      }, 300);
+      const timer = setTimeout(() => searchTutors(searchTerm), 300);
       return () => clearTimeout(timer);
     }
   }, [searchTerm, isEditing]);
@@ -62,11 +57,7 @@ const PetForm: React.FC = () => {
       setValue('idade', pet.idade);
       if (pet.foto) setPreview(pet.foto.url);
       if (pet.tutores) setLinkedTutors(pet.tutores);
-    } catch (error) {
-      navigate('/pets');
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { navigate('/pets'); } finally { setLoading(false); }
   };
 
   const searchTutors = async (nome: string) => {
@@ -74,22 +65,11 @@ const PetForm: React.FC = () => {
       const data = await TutorService.getAll(0, nome);
       setSearchResults(data.content);
       setShowDropdown(true);
-    } catch (error) {
-      console.error("Erro busca tutores");
-    }
+    } catch (error) { console.error("Erro busca tutores"); }
   };
 
   const handleSelectTutor = (tutor: Tutor) => {
-    setSelectedTutor(tutor);
-    setSearchTerm(tutor.nome);
-    setShowDropdown(false);
-  };
-
-  const handleClearSelection = () => {
-    setSelectedTutor(null);
-    setSearchTerm('');
-    setSearchResults([]);
-    setShowDropdown(false);
+    setSelectedTutor(tutor); setSearchTerm(tutor.nome); setShowDropdown(false);
   };
 
   const handleLinkTutor = async () => {
@@ -97,158 +77,133 @@ const PetForm: React.FC = () => {
     try {
       await TutorService.vincularPet(selectedTutor.id, Number(id));
       alert('Tutor vinculado!');
-      handleClearSelection();
-      loadPetData();
-    } catch (error: any) {
-      const msg = error.response?.data?.message || "Erro desconhecido";
-      alert(`Erro ao vincular: ${msg}`);
-    }
+      setSelectedTutor(null); setSearchTerm(''); setSearchResults([]); loadPetData();
+    } catch (error: any) { alert(`Erro: ${error.response?.data?.message || 'Falha ao vincular'}`); }
   };
 
   const handleUnlinkTutor = async (tutorId: number) => {
     if (!confirm('Remover este tutor?')) return;
     try {
-      // Log para debug
-      console.log(`Desvinculando Tutor ${tutorId} do Pet ${id}`);
-      
       await TutorService.desvincularPet(tutorId, Number(id));
-      
-      alert('Vínculo removido!');
       loadPetData();
-    } catch (error: any) {
-      console.error("Erro detalhado:", error);
-      const status = error.response?.status;
-      const msg = error.response?.data?.message || error.message;
-      alert(`Erro ao desvincular (Status ${status}): ${msg}`);
-    }
+    } catch (error) { alert('Erro ao desvincular.'); }
   };
 
   const onSubmit = async (data: PetFormData) => {
     setLoading(true);
     try {
-      const payload = { ...data };
       let petId = id;
-
-      if (isEditing) {
-        await PetService.save(payload, id);
-      } else {
-        const response = await PetService.save(payload);
+      if (isEditing) await PetService.save(data, id);
+      else {
+        const res = await PetService.save(data);
         // @ts-ignore
-        petId = response.data.id;
+        petId = res.data.id;
       }
-
-      if (foto && petId) {
-        await PetService.uploadPhoto(petId, foto);
-      }
-
-      alert('Pet salvo!');
+      if (foto && petId) await PetService.uploadPhoto(petId, foto);
+      alert('Salvo com sucesso!');
       if (!isEditing) navigate('/pets');
-    } catch (error) {
-      alert('Erro ao salvar.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFoto(e.target.files[0]);
-      setPreview(URL.createObjectURL(e.target.files[0]));
-    }
+    } catch (error) { alert('Erro ao salvar.'); } finally { setLoading(false); }
   };
 
   if (loading && !isEditing) return <Loading />;
 
   return (
     <div className="container" style={{ maxWidth: '800px', paddingTop: '40px', paddingBottom: '100px' }}>
+      {/* Botão Voltar Corrigido */}
       <button onClick={() => navigate('/pets')} className="btn-secondary" style={{ marginBottom: '20px' }}>
-        &larr; Voltar
+        <span className="material-icons">arrow_back</span> Voltar
       </button>
 
-      <h2>{isEditing ? 'Editar Pet' : 'Novo Pet'}</h2>
+      <h2 style={{color: '#e0e0e0'}}>{isEditing ? 'Editar Pet' : 'Novo Pet'}</h2>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card" style={{ display: 'block' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Dados do Pet</h3>
+      <form onSubmit={handleSubmit(onSubmit)} className="card" style={{ borderTop: '4px solid #90caf9' }}>
+        <h3 style={{ marginTop: 0, marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px', color: '#90caf9' }}>
+          Dados do Pet
+        </h3>
 
-        <div style={{ marginBottom: '15px' }}>
-            <label>Nome</label>
-            <input {...register("nome", { required: true })} placeholder="Ex: Rex" />
-            {errors.nome && <span style={{ color: 'red' }}>Obrigatório</span>}
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-            <label>Espécie</label>
-            <select {...register("especie")} style={{ width: '100%', padding: '10px', background: '#333', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}>
-                <option value="Cachorro">Cachorro</option>
-                <option value="Gato">Gato</option>
-                <option value="Outro">Outro</option>
-            </select>
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-            <label>Raça</label>
-            <input {...register("raca")} placeholder="Ex: Vira-lata" />
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-            <label>Idade (anos)</label>
-            <input type="number" {...register("idade", { required: true })} placeholder="0" />
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-            <label>Foto</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                {preview && <img src={preview} alt="Preview" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />}
-                <input type="file" onChange={handleFileChange} accept="image/*" />
+        <div style={{ display: 'grid', gap: '15px' }}>
+            <div>
+                <label>Nome do Pet</label>
+                <input {...register("nome", { required: true })} placeholder="Ex: Rex" />
+                {errors.nome && <span style={{ color: '#ef9a9a' }}>Obrigatório</span>}
+            </div>
+            <div>
+                <label>Espécie</label>
+                <select {...register("especie")}>
+                    <option value="Cachorro">Cachorro</option>
+                    <option value="Gato">Gato</option>
+                    <option value="Outro">Outro</option>
+                </select>
+            </div>
+            <div>
+                <label>Raça</label>
+                <input {...register("raca")} placeholder="Ex: Vira-lata" />
+            </div>
+            <div>
+                <label>Idade (anos)</label>
+                <input type="number" {...register("idade", { required: true })} placeholder="0" />
+            </div>
+            <div>
+                <label>Foto de Perfil</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '8px' }}>
+                    {preview && <img src={preview} alt="Preview" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #90caf9' }} />}
+                    <input type="file" onChange={(e) => { if (e.target.files?.[0]) { setFoto(e.target.files[0]); setPreview(URL.createObjectURL(e.target.files[0])); } }} accept="image/*" />
+                </div>
             </div>
         </div>
 
-        <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Salvando...' : 'Salvar'}
+        {/* Botão Salvar Corrigido */}
+        <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '24px', width: '100%' }}>
+          <span className="material-icons">save</span>
+          {loading ? 'Salvando...' : 'Salvar Registro'}
         </button>
       </form>
 
       {isEditing && (
-        <div className="card" style={{ display: 'block', marginTop: '30px', border: '1px solid #444' }}>
-            <h3 style={{ marginTop: 0, color: '#f09433' }}>Tutores</h3>
+        <div className="card" style={{ marginTop: '30px', borderTop: '4px solid #80deea' }}>
+            <h3 style={{ marginTop: 0, color: '#80deea' }}>Tutores Responsáveis</h3>
             
-            <div style={{ background: '#252525', padding: '15px', borderRadius: '8px', marginBottom: '30px', position: 'relative' }} ref={searchWrapperRef}>
-                <label style={{ fontSize: '0.8rem', color: '#aaa' }}>Vincular Tutor</label>
+            <div style={{ background: '#2d2d2d', padding: '20px', borderRadius: '8px', marginBottom: '20px', position: 'relative' }} ref={searchWrapperRef}>
+                <label style={{color: '#80deea'}}>Vincular Tutor</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1 }}>
                         <input 
                             type="text" 
-                            placeholder="Nome do tutor..."
+                            placeholder="Buscar por nome..."
                             value={searchTerm}
                             onChange={(e) => { setSearchTerm(e.target.value); setSelectedTutor(null); setShowDropdown(true); }}
                             onFocus={() => { if(searchTerm && !selectedTutor) setShowDropdown(true); }}
-                            style={{ margin: 0, width: '100%', background: selectedTutor ? '#2e3a2e' : '#1a1a1a' }}
+                            style={{ margin: 0 }}
                         />
                         {showDropdown && searchResults.length > 0 && (
-                            <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#333', border: '1px solid #555', maxHeight: '200px', overflowY: 'auto', padding: 0, margin: 0, listStyle: 'none', zIndex: 10 }}>
+                            <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#2d2d2d', border: '1px solid #444', maxHeight: '200px', overflowY: 'auto', padding: 0, margin: 0, listStyle: 'none', zIndex: 10, boxShadow: '0 4px 8px rgba(0,0,0,0.5)' }}>
                                 {searchResults.map(tutor => (
-                                    <li key={tutor.id} onClick={() => handleSelectTutor(tutor)} style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #444' }}>
-                                        <strong>{tutor.nome}</strong> (CPF: {tutor.cpf})
+                                    <li key={tutor.id} onClick={() => handleSelectTutor(tutor)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #444', color: '#e0e0e0' }}>
+                                        <strong>{tutor.nome}</strong> <span style={{fontSize: '0.85rem', color: '#9e9e9e'}}>({tutor.cpf})</span>
                                     </li>
                                 ))}
                             </ul>
                         )}
                     </div>
-                    <button type="button" className="btn-primary" onClick={handleLinkTutor} disabled={!selectedTutor} style={{ height: '50px', width: '100px', margin: 0 }}>
-                        +
+                    {/* Botão Adicionar Corrigido */}
+                    <button type="button" className="btn-primary" onClick={handleLinkTutor} disabled={!selectedTutor} style={{ width: 'auto', padding: '0 20px', backgroundColor: '#80deea' }}>
+                       <span className="material-icons" style={{color: '#121212'}}>add</span>
                     </button>
                 </div>
             </div>
 
             {linkedTutors.map(tutor => (
-                <div key={tutor.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#121212', padding: '10px', marginBottom: '10px', borderRadius: '8px' }}>
-                    <span>{tutor.nome}</span>
-                    <button 
-                        type="button" 
-                        onClick={() => handleUnlinkTutor(tutor.id)} 
-                        style={{ color: '#e57373', background: 'none', border: 'none', cursor: 'pointer' }}
-                    >
-                        Remover
+                <div key={tutor.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#2d2d2d', padding: '16px', marginBottom: '10px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span className="material-icons" style={{ color: '#80deea' }}>person</span>
+                        <div>
+                           <div style={{ color: '#fff', fontWeight: 500 }}>{tutor.nome}</div>
+                           <div style={{ color: '#aaa', fontSize: '0.85rem' }}>{tutor.telefone}</div>
+                        </div>
+                    </div>
+                    {/* Botão Remover Corrigido */}
+                    <button type="button" onClick={() => handleUnlinkTutor(tutor.id)} style={{ color: '#ef9a9a', background: 'transparent', fontSize: '0.9rem', border: '1px solid #ef9a9a', padding: '6px 12px', borderRadius: '16px' }}>
+                       <span className="material-icons" style={{fontSize: '18px'}}>delete</span> Remover
                     </button>
                 </div>
             ))}
