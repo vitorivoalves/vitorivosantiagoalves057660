@@ -28,8 +28,7 @@ api.interceptors.response.use(
 
       if (refreshToken) {
         try {
-          // Tenta renovar o token usando o endpoint do Swagger
-          // O Swagger diz: O refresh token deve ser enviado no cabeçalho 'Authorization' [cite: 325]
+          // Tenta renovar o token
           const response = await axios.put(
             'https://pet-manager-api.geia.vip/autenticacao/refresh',
             {},
@@ -38,24 +37,27 @@ api.interceptors.response.use(
 
           const { access_token, refresh_token } = response.data;
           
-          // Salva os novos tokens
           localStorage.setItem('token', access_token);
-          localStorage.setItem('refresh_token', refresh_token);
+          // Atualiza refresh token se vier um novo
+          if (refresh_token) {
+             localStorage.setItem('refresh_token', refresh_token);
+          }
 
-          // Atualiza o header da requisição original e tenta de novo
           api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
           originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
           
           return api(originalRequest);
         } catch (refreshError) {
-          console.error("Sessão expirada. Faça login novamente.");
-          // Se falhar o refresh, desloga
-          localStorage.clear();
-          window.location.href = '/'; 
+          console.error("Sessão expirada ou inválida.");
+          // CORREÇÃO: Não forçar reload (window.location.href)
+          // Apenas limpa e deixa o componente tratar o erro
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
         }
       } else {
-        localStorage.clear();
-        window.location.href = '/';
+        // Sem refresh token, apenas limpa
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
       }
     }
     return Promise.reject(error);
